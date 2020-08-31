@@ -1,0 +1,100 @@
+/**
+ * 问：为什么repositories要声明两次哪？buildscript代码块中的声明与下半部分声明有什么不同？
+ * 答：buildscript中的声明是gradle脚本执行所需依赖，而在直接声明的依赖项、仓库地址等信息是项目本身所需的依赖
+ *    gradle在执行脚本时，会优先执行buildscript代码块中的内容，然后才会执行剩余的内容
+ */
+buildscript {
+	repositories {
+		mavenLocal()
+		maven { url 'http://maven.cf.com:8080/nexus/content/repositories/releases/' }
+		maven { url 'http://maven.cf.com:8080/nexus/content/repositories/snapshots/' }
+		maven { url 'http://maven.cf.com:8080/nexus/content/repositories/thirdparty/' }
+		maven { url 'http://maven.cf.com:8080/nexus/content/repositories/others/' }
+		maven { url 'http://maven.aliyun.com/nexus/content/groups/public' }
+		maven { url "https://plugins.gradle.org/m2/" }
+		mavenCentral()
+	}
+	dependencies {
+		classpath "mysql:mysql-connector-java:${mysql_driver_version}"
+		classpath "org.springframework.boot:spring-boot-gradle-plugin:${spring_boot_version}"
+		classpath "net.ltgt.gradle:gradle-apt-plugin:0.21"
+	}
+}
+
+//加载插件
+apply plugin: 'java'
+apply plugin: 'idea'
+apply plugin: 'eclipse'
+apply plugin: 'maven-publish'
+apply plugin: 'net.ltgt.apt'
+apply plugin: 'net.ltgt.apt-idea'
+apply plugin: 'org.springframework.boot'
+apply plugin: 'io.spring.dependency-management'
+
+//打包配置
+group = 'com.example'
+version = '0.0.1-SNAPSHOT'
+
+/**
+ * sourceCompatibility属性跟编译环境有关，而targetCompatibility属性跟运行环境有关
+ * 使用原则：
+ * 		sourceCompatibility关系到你使用到的Java语法特性及库
+ * 		sourceCompatibility不能比targetCompatibility大
+ * 		targetCompatibility不能比目标客户端运行环境的JavaVersion大
+ * 		targetCompatibility不能比当前Gradle使用的JavaVersion大
+ */
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+//配置字符集为UTF-8，否则java编译的时候缺省状态下会因为中文字符而失败
+[compileJava, compileTestJava, javadoc]*.options*.encoding = 'UTF-8'
+
+//配置仓库
+repositories {
+	//按配置顺序查找、加载
+	mavenLocal()
+	maven { url 'http://maven.cf.com:8080/nexus/content/repositories/releases/' }
+	maven { url 'http://maven.cf.com:8080/nexus/content/repositories/snapshots/' }
+	maven { url 'http://maven.cf.com:8080/nexus/content/repositories/thirdparty/' }
+	maven { url 'http://maven.cf.com:8080/nexus/content/repositories/others/' }
+	maven { url 'http://maven.aliyun.com/nexus/content/groups/public' }
+	maven { url "https://plugins.gradle.org/m2/" }
+	mavenCentral()
+}
+
+//配置依赖
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+
+	//jpa
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	//querydsl
+	implementation "com.querydsl:querydsl-jpa:${querydsl_version}"
+	implementation "com.querydsl:querydsl-sql:${querydsl_sql_version}"
+	implementation "com.querydsl:querydsl-apt:${querydsl_version}"
+	implementation 'org.hibernate.javax.persistence:hibernate-jpa-2.1-api:1.0.2.Final'
+	implementation 'javax.annotation:javax.annotation-api:1.3.2'
+	implementation 'joda-time:joda-time:2.10'
+	implementation 'com.alibaba:druid-spring-boot-starter:1.1.23'
+	implementation 'org.springframework.boot:spring-boot-autoconfigure:2.2.0.RELEASE'
+	implementation 'log4j:log4j:1.2.17'
+	//mysql
+	runtimeOnly "mysql:mysql-connector-java:${mysql_driver_version}"
+
+	testImplementation "org.springframework.boot:spring-boot-starter-test:${spring_boot_version}"
+
+	annotationProcessor(
+		"com.querydsl:querydsl-apt:${querydsl_version}:jpa",
+		"org.hibernate.javax.persistence:hibernate-jpa-2.1-api:1.0.2.Final",
+		"javax.annotation:javax.annotation-api:1.3.2"
+	)
+}
+
+compileJava{
+	aptOptions.processorArgs = [
+	        'querydsl.entityAccessors':true,
+			'querydsl.includedPackages':'com.example.demo.entity',
+			'querydsl.packageSuffix':'.querydsl'
+	]
+}
+
